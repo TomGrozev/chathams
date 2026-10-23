@@ -1,0 +1,29 @@
+<div :for={page_staff <- @staff} class="p-2 break-after-page">
+  <h1 class="text-center text-4xl font-bold">Chathams ledger</h1>
+  <p class="mt-2 text-center">
+    Please write in the cost of items being purchased in each box. Only write
+    one number per box and if you run out of boxes please write your name and
+    sid in a blank row at the end of these sheets. If for example you are buying
+    two items at once, one that is 50 cents and another that is 1 dollar, then
+    write 1.5 next to the dollar sign.
+  </p>
+
+  <table class="mt-4 w-full border-2">
+    <tbody>
+      <tr
+        :for={{person, idx} <- Enum.with_index(page_staff)}
+        class="flex"
+      >
+        <th class="p-3 border-2">
+          <span>{person.full_name}</span> (<span>{person.sid}</span>)
+        </th>
+        <td
+          :for={i <- 10..1//-1}
+          class="flex-grow-1 border-2 text-lg py-3 px-1"
+        >
+          $
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

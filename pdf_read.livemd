@@ -1,0 +1,291 @@
+# Chathams PDF reader
+
+```elixir
+Mix.install([
+  {:kino, "~> 0.18.0"},
+  {:image, "~> 0.62.1"},
+  {:evision, "~> 0.2.14"},
+  {:pdfium, "~> 0.1.27"},
+  {:tesseract_ocr, "~> 0.1.5"},
+  {:bumblebee, path: "/Users/user/Documents/PRs/fork-bumblebee", override: true},
+  {:exla, ">= 0.0.0"},
+  {:stb_image, "~> 0.6.10"}
+], consolidate_protocols: false)
+```
+
+## PDF to images
+
+```elixir
+file_input = Kino.Input.file("Scanned table")
+```
+
+```elixir
+value = Kino.Input.read(file_input)
+path = Kino.Input.file_path(value.file_ref)
+
+{:ok, doc} = PDFium.load_document(path)
+{:ok, pages} = PDFium.get_page_count(doc)
+
+page_to_image = fn doc, page ->
+  with {:ok, binary, w, h} <- PDFium.get_page_bitmap(doc, page, 300) do
+    Vix.Vips.Image.new_from_binary(binary, w, h, 4, :VIPS_FORMAT_UCHAR)
+  end
+end
+
+{:ok, images} = Enum.reduce_while(0..(pages - 1), {:ok, []}, fn page, {:ok, acc} ->
+    case page_to_image.(doc, page) do
+        {:ok, img} -> {:cont, {:ok, [img | acc]}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+
+:ok = PDFium.close_document(doc)
+```
+
+## Process pages
+
+```elixir
+img = Enum.at(images, 3)
+```
+
+```elixir
+[r, g, b, _mask] = Image.split_bands(img)
+{:ok, img} = Image.join_bands([r, g, b])
+
+{:ok, e_img} = Image.to_evision(img)
+greyscale = Evision.cvtColor(e_img, Evision.Constant.cv_COLOR_BGR2GRAY())
+```
+
+```elixir
+{_, threshold} = Evision.threshold(
+ greyscale,
+ 0,
+ 255,
+ Evision.ThresholdTypes.cv_THRESH_BINARY() + Evision.ThresholdTypes.cv_THRESH_OTSU()
+)
+
+threshold
+```
+
+```elixir
+inverted = Evision.Mat.bitwise_not(threshold)
+```
+
+```elixir
+kernel = Evision.getStructuringElement(Evision.Constant.cv_MORPH_RECT(), {3, 3})
+
+dilated = Evision.dilate(inverted, kernel, iterations: 5)
+```
+
+## Find contours
+
+```elixir
+{contours, _hierarchy} = Evision.findContours(dilated, Evision.Constant.cv_RETR_TREE(), Evision.Constant.cv_CHAIN_APPROX_SIMPLE())
+
+Evision.drawContours(e_img, contours, -1, {0, 255, 0}, thickness: 3)
+```
+
+```elixir
+rectangular_contours = Enum.reduce(contours, [], fn contour, acc ->
+  peri = Evision.arcLength(contour, true)
+  approx = Evision.approxPolyDP(contour, 0.02 * peri, true)
+  {len, _, _} = Evision.Mat.shape(approx)
+  
+  if len == 4, do: [approx | acc], else: acc
+end)
+
+Evision.drawContours(e_img, rectangular_contours, -1, {0, 255, 0}, thickness: 3)
+```
+
+```elixir
+largest_contour = Enum.max_by(rectangular_contours, &Evision.contourArea/1)
+
+Evision.drawContours(e_img, [largest_contour], -1, {0, 255, 0}, thickness: 3)
+```
+
+## Perspective correct
+
+```elixir
+pts =
+  largest_contour
+  |> Evision.Mat.to_nx(Nx.BinaryBackend)
+  |> Nx.reshape({4, 2})
+
+sum = Nx.sum(pts, axes: [1])
+diff = Nx.diff(pts, axis: 1)
+
+ordered_rect = Nx.stack([pts[Nx.argmin(sum)], pts[Nx.argmin(diff)], pts[Nx.argmax(sum)], pts[Nx.argmax(diff)]])
+  
+Nx.to_list(ordered_rect)
+|> Enum.reduce(e_img, fn [x, y], acc ->
+  Evision.circle(acc, {x, y}, 10, {0, 0, 255}, thickness: -1)
+  end)
+```
+
+```elixir
+calculateDistanceBetween2Points = fn p1, p2 ->
+  Nx.pow(Nx.subtract(p2[0], p1[0]), 2)
+  |> Nx.add(Nx.pow(Nx.subtract(p2[1], p1[1]), 2))
+  |> Nx.pow(0.5)
+end
+
+distance_between_top_left_and_top_right = calculateDistanceBetween2Points.(ordered_rect[0], ordered_rect[1])
+distance_between_top_left_and_bottom_left = calculateDistanceBetween2Points.(ordered_rect[0], ordered_rect[3])
+
+aspect_ratio = Nx.divide(distance_between_top_left_and_bottom_left, distance_between_top_left_and_top_right) |> Nx.to_number()
+
+{img_height, img_width, _} = Evision.Mat.shape(e_img)
+
+new_width = floor(img_width * 0.9)
+new_height = floor(img_width * aspect_ratio)
+
+pts1 = Nx.as_type(ordered_rect, :f32)
+pts2 = Nx.f32([[0, 0], [new_width, 0], [new_width, new_height], [0, new_height]])
+
+matrix = Evision.getPerspectiveTransform(pts1, pts2)
+
+perspective_corrected_img = Evision.warpPerspective(e_img, matrix, {new_width, new_height})
+```
+
+```elixir
+padding = floor(img_height * 0.1)
+pv_with_border = Evision.copyMakeBorder(perspective_corrected_img, padding, padding, padding, padding, Evision.Constant.cv_BORDER_CONSTANT(), value: {255, 255, 255})
+```
+
+## Remove lines
+
+```elixir
+pc_greyscale = Evision.cvtColor(pv_with_border, Evision.Constant.cv_COLOR_BGR2GRAY())
+{_, pv_threshold} = Evision.threshold(
+ pc_greyscale,
+ 0,
+ 255,
+ Evision.ThresholdTypes.cv_THRESH_BINARY() + Evision.ThresholdTypes.cv_THRESH_OTSU()
+)
+pv_inverted = Evision.Mat.bitwise_not(pv_threshold)
+```
+
+```elixir
+{contours, _hierarchy} = Evision.findContours(pv_inverted, Evision.Constant.cv_RETR_TREE(), Evision.Constant.cv_CHAIN_APPROX_SIMPLE())
+
+rectangular_contours = Enum.reduce(contours, [], fn contour, acc ->
+  peri = Evision.arcLength(contour, true)
+  approx = Evision.approxPolyDP(contour, 0.02 * peri, true)
+  {len, _, _} = Evision.Mat.shape(approx)
+  
+  if len == 4, do: [approx | acc], else: acc
+end)
+
+Evision.drawContours(pv_with_border, rectangular_contours, -1, {0, 255, 0}, thickness: 3)
+```
+
+## Seperate words for OCR
+
+```elixir
+{_, _, total_width, total_height} = Evision.boundingRect(largest_contour)
+
+rectangular_boxes = Stream.map(rectangular_contours, &Evision.boundingRect/1)
+
+common_height = 
+  rectangular_boxes
+  |> Enum.map(fn {_, _, _, h} -> h end)
+  |> Nx.tensor()
+  |> Nx.mode()
+  |> Nx.to_number()
+
+{cells, bounding_img} =
+  rectangular_boxes
+  |> Enum.filter(fn {_, _, _, h} -> abs(h - common_height) <= 10 end)
+  |> Enum.map_reduce(pv_with_border, fn {x, y, w, h}, acc -> 
+    {{x, y, w, h}, Evision.rectangle(acc, {x, y}, {x + w, y + h}, {0, 255, 0}, thickness: 5)}
+  end)
+
+bounding_img
+```
+
+```elixir
+mean_height = 
+  Enum.map(cells, &elem(&1, 3))
+  |> Nx.tensor()
+  |> Nx.mean()
+  |> Nx.to_number()
+
+cells = Enum.sort_by(cells, &elem(&1, 1))
+
+half_mean_height = mean_height / 2
+
+defmodule SortRows do
+  def sort([first | rest], half_mean_height), do: sort(rest, half_mean_height, {[], [first]})
+
+  def sort([], _, {rows, current}), do: Enum.reverse([current | rows])
+  def sort([{_, y, _, _} = box | rest], half_mean_height, {rows, [{_, py, _, _} | _] = current}) do
+    if abs(y - py) <= half_mean_height do
+      sort(rest, half_mean_height, {rows, [box | current]})
+    else
+      sort(rest, half_mean_height, {[Enum.reverse(current) | rows], [box]})
+    end
+  end
+end
+
+rows =
+  SortRows.sort(cells, half_mean_height)
+  |> Enum.map(fn x -> Enum.sort_by(x, &elem(&1, 0)) end)
+```
+
+## OCR
+
+```elixir
+Nx.default_backend(EXLA.Backend)
+
+{:ok, model_info} = Bumblebee.load_model({:hf, "microsoft/trocr-base-handwritten"}, log_params_diff: true)
+{:ok, featurizer} = Bumblebee.load_featurizer({:hf, "microsoft/trocr-base-handwritten"}, module: Bumblebee.Vision.VitFeaturizer)
+{:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, "Xenova/trocr-base-handwritten"}, type: :bert)
+
+
+{:ok, generation_config} =
+  Bumblebee.load_generation_config({:hf, "microsoft/trocr-base-handwritten"})
+```
+
+```elixir
+tmp_dir =
+  System.tmp_dir!()
+  |> Path.join("/chathams/ocr_slices")
+
+File.mkdir_p!(tmp_dir)
+
+imgs = Enum.with_index(for row <- rows, box <- row, do: {row, box})
+
+serving =
+  Bumblebee.Vision.image_to_text(model_info, featurizer, tokenizer, generation_config,
+    defn_options: [compiler: EXLA]
+  )
+
+# image =
+#   pv_inverted
+#   |> Evision.cvtColor(Evision.Constant.cv_COLOR_GRAY2BGR())
+#   |> Evision.Mat.to_nx()
+#   |> StbImage.from_nx()
+
+# Nx.Serving.run(serving, image)
+
+{table, _} = Enum.map_reduce(rows, 0, fn row, idx ->
+  Enum.map_reduce(row, idx, fn {x, y, w, h}, idx2 ->
+    # y = y - 5
+    cropped_img = Evision.Mat.roi(pv_inverted, {x, y, w, h})
+
+
+    image =
+      cropped_img
+      |> Evision.cvtColor(Evision.Constant.cv_COLOR_GRAY2BGR())
+      |> Evision.Mat.to_nx()
+      |> StbImage.from_nx()
+
+    dbg(image)
+
+    %{results: [%{text: result}]} = Nx.Serving.run(serving, image)
+    {String.trim(result), idx2 + 1}
+  end)
+end)
+
+table
+```
