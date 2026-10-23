@@ -1,7 +1,6 @@
 defmodule Chathams.Ledger.Sheet do
   use Ecto.Schema
   import Ecto.Changeset
-  import Ecto.Query
 
   @derive {
     Blank.Schema,
@@ -32,6 +31,7 @@ defmodule Chathams.Ledger.Sheet do
   end
 
   @doc false
+  @spec changeset(Sheet.t(), map()) :: Ecto.Changeset.t()
   def changeset(sheet, attrs) do
     sheet
     |> cast(attrs, [])

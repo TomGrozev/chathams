@@ -70,7 +70,9 @@ defmodule Chathams.MixProject do
       {:image, "~> 0.62"},
       {:evision, "~> 0.2"},
       {:pdfium, "~> 0.1"},
-      {:tesseract_ocr, "~> 0.1.5"}
+      {:tesseract_ocr, "~> 0.1.5"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -93,7 +95,15 @@ defmodule Chathams.MixProject do
         "esbuild chathams --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
+      precommit: [
+        "compile --warnings-as-errors",
+        "deps.unlock --unused",
+        "format --check-formatted",
+        "credo --strict",
+        "xref graph --format cycles --label compile-connected --fail-above 0",
+        "sobelow --config",
+        "test"
+      ]
     ]
   end
 end

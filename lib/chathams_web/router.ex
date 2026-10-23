@@ -3,13 +3,25 @@ defmodule ChathamsWeb.Router do
 
   import Blank.Router
 
+  # The root layouts run an inline theme <script> before the bundle loads. A
+  # per-request nonce would break it until the layout takes a nonce assign, so
+  # the policy allows inline script for now.
+  # ponytail: 'unsafe-inline' in script-src allows the inline theme script;
+  # upgrade path is a nonce generated per request and passed to the layout.
+  # Sobelow reads this attribute, so it must stay a literal map with a literal
+  # header value; do not build it with a module attribute computation.
+  @content_security_policy %{
+    "content-security-policy" =>
+      "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:"
+  }
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_live_flash
     plug :put_root_layout, html: {ChathamsWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug :put_secure_browser_headers, @content_security_policy
   end
 
   pipeline :api do
@@ -20,11 +32,6 @@ defmodule ChathamsWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
-
-    live "/staff", StaffLive.Index, :index
-    live "/staff/new", StaffLive.Form, :new
-    live "/staff/:id", StaffLive.Show, :show
-    live "/staff/:id/edit", StaffLive.Form, :edit
   end
 
   blank_admin "/admin" do

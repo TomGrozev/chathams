@@ -26,4 +26,3 @@ defmodule Blank.Repo.Migrations.CreateAdminsAuthTables do
     create unique_index(:blank_admins_tokens, [:context, :token])
   end
 end
-

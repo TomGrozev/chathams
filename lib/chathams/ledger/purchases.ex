@@ -12,6 +12,7 @@ defmodule Chathams.Ledger.Purchases do
   end
 
   @doc false
+  @spec changeset(Purchases.t(), map()) :: Ecto.Changeset.t()
   def changeset(purchase, attrs) do
     purchase
     |> cast(attrs, [:purchases])

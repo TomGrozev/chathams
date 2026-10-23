@@ -1,4 +1,9 @@
 defmodule Chathams.TableReader do
+  @moduledoc false
+
+  alias Vix.Vips.Image, as: VipsImage
+
+  @spec process(Path.t()) :: [term()] | {:error, term()}
   def process(path) do
     # tmp_dir = System.tmp_dir!() |> Path.join("/")
     with {:ok, doc} <- PDFium.load_document(path),
@@ -6,23 +11,24 @@ defmodule Chathams.TableReader do
          :ok <- PDFium.close_document(doc) do
       Enum.map(images, &process_page/1)
     end
-    |> dbg()
   end
 
   defp pdf_to_images(doc) do
     with {:ok, pages} <- PDFium.get_page_count(doc) do
-      Enum.reduce_while(0..(pages - 1), {:ok, []}, fn page, {:ok, acc} ->
-        case page_to_image(doc, page) do
-          {:ok, img} -> {:cont, {:ok, [img | acc]}}
-          {:error, reason} -> {:halt, {:error, reason}}
-        end
-      end)
+      Enum.reduce_while(0..(pages - 1), {:ok, []}, &reduce_page(doc, &1, &2))
+    end
+  end
+
+  defp reduce_page(doc, page, {:ok, acc}) do
+    case page_to_image(doc, page) do
+      {:ok, img} -> {:cont, {:ok, [img | acc]}}
+      {:error, reason} -> {:halt, {:error, reason}}
     end
   end
 
   defp page_to_image(doc, page) do
     with {:ok, binary, w, h} <- PDFium.get_page_bitmap(doc, page, 300) do
-      Vix.Vips.Image.new_from_binary(binary, w, h, 4, :VIPS_FORMAT_UCHAR)
+      VipsImage.new_from_binary(binary, w, h, 4, :VIPS_FORMAT_UCHAR)
     end
   end
 
@@ -40,7 +46,7 @@ defmodule Chathams.TableReader do
              Evision.ThresholdTypes.cv_THRESH_BINARY() + Evision.ThresholdTypes.cv_THRESH_OTSU()
            ),
          {:ok, inverted} <- Evision.Mat.bitwise_not(threshold),
-         {:ok, dilated} <- Evision.dilate(inverted, None, iterations: 5) do
+         {:ok, _dilated} <- Evision.dilate(inverted, None, iterations: 5) do
     end
   end
 end

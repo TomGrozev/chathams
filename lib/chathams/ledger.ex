@@ -17,6 +17,7 @@ defmodule Chathams.Ledger do
       [%Sheet{}, ...]
 
   """
+  @spec list_sheets() :: [Sheet.t()]
   def list_sheets do
     Repo.all(Sheet)
   end
@@ -35,6 +36,7 @@ defmodule Chathams.Ledger do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_sheet!(integer()) :: Sheet.t()
   def get_sheet!(id), do: Repo.get!(Sheet, id)
 
   @doc """
@@ -49,6 +51,7 @@ defmodule Chathams.Ledger do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec create_sheet(map()) :: {:ok, Sheet.t()} | {:error, Ecto.Changeset.t()}
   def create_sheet(attrs) do
     %Sheet{}
     |> Sheet.changeset(attrs)
@@ -67,6 +70,7 @@ defmodule Chathams.Ledger do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec update_sheet(Sheet.t(), map()) :: {:ok, Sheet.t()} | {:error, Ecto.Changeset.t()}
   def update_sheet(%Sheet{} = sheet, attrs) do
     sheet
     |> Sheet.changeset(attrs)
@@ -85,6 +89,7 @@ defmodule Chathams.Ledger do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec delete_sheet(Sheet.t()) :: {:ok, Sheet.t()} | {:error, Ecto.Changeset.t()}
   def delete_sheet(%Sheet{} = sheet) do
     Repo.delete(sheet)
   end
@@ -98,6 +103,7 @@ defmodule Chathams.Ledger do
       %Ecto.Changeset{data: %Sheet{}}
 
   """
+  @spec change_sheet(Sheet.t(), map()) :: Ecto.Changeset.t()
   def change_sheet(%Sheet{} = sheet, attrs \\ %{}) do
     Sheet.changeset(sheet, attrs)
   end
@@ -113,6 +119,7 @@ defmodule Chathams.Ledger do
       [%Purchases{}, ...]
 
   """
+  @spec list_purchases() :: [Purchases.t()]
   def list_purchases do
     Repo.all(Purchases)
   end
@@ -131,6 +138,7 @@ defmodule Chathams.Ledger do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_purchases!(integer()) :: Purchases.t()
   def get_purchases!(id), do: Repo.get!(Purchases, id)
 
   @doc """
@@ -142,6 +150,7 @@ defmodule Chathams.Ledger do
       %Ecto.Changeset{data: %Purchases{}}
 
   """
+  @spec change_purchase(Purchases.t(), map()) :: Ecto.Changeset.t()
   def change_purchase(%Purchases{} = purchases, attrs \\ %{}) do
     Purchases.changeset(purchases, attrs)
   end

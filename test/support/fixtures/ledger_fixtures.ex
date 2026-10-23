@@ -5,30 +5,17 @@ defmodule Chathams.LedgerFixtures do
   """
 
   @doc """
-  Generate a sheet.
+  Generate a sheet with one purchase row.
   """
+  @spec sheet_fixture(map()) :: Chathams.Ledger.Sheet.t()
   def sheet_fixture(attrs \\ %{}) do
     {:ok, sheet} =
       attrs
       |> Enum.into(%{
-        purchases: []
+        purchases: [%{purchases: [1.0]}]
       })
       |> Chathams.Ledger.create_sheet()
 
     sheet
-  end
-
-  @doc """
-  Generate a purchase.
-  """
-  def purchase_fixture(attrs \\ %{}) do
-    {:ok, purchase} =
-      attrs
-      |> Enum.into(%{
-        purchases: []
-      })
-      |> Chathams.Ledger.create_purchase()
-
-    purchase
   end
 end

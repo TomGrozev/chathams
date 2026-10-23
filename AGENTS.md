@@ -1,5 +1,27 @@
 This is a web application written using the Phoenix web framework.
 
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on TomGrozev/chathams, through the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default triage labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+## Stack
+
+elixir (stack pack: `rule://stack-elixir`), phoenix (stack pack: `rule://stack-phoenix`). Repo-specific rules: `CODING_STANDARDS.md`.
+
+## Gate
+
+`mix precommit`: compile with warnings as errors, unused-lock check, format check, `credo --strict`, compile-time xref cycles, `sobelow --config`, then `mix test`. Run it before you land any change. Tests need Postgres on `localhost:5432` (the `chathams-postgres` Docker container, trust auth).
+
 ## Project guidelines
 
 - Use `mix precommit` alias when you are done with all changes and fix any pending issues

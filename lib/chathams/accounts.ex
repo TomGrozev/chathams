@@ -17,6 +17,7 @@ defmodule Chathams.Accounts do
       [%Staff{}, ...]
 
   """
+  @spec list_staff() :: [Staff.t()]
   def list_staff do
     Repo.all(
       from(s in Staff,
@@ -39,7 +40,9 @@ defmodule Chathams.Accounts do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_staff!(String.t()) :: Staff.t()
   def get_staff!(sid) when is_binary(sid), do: Repo.get!(Staff, sid)
+
   def get_staff!(_), do: raise(ArgumentError, message: "invalid sid supplied.")
 
   @doc """
@@ -54,6 +57,7 @@ defmodule Chathams.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec create_staff(map()) :: {:ok, Staff.t()} | {:error, Ecto.Changeset.t()}
   def create_staff(attrs) do
     %Staff{}
     |> Staff.changeset(attrs)
@@ -72,6 +76,7 @@ defmodule Chathams.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec update_staff(Staff.t(), map()) :: {:ok, Staff.t()} | {:error, Ecto.Changeset.t()}
   def update_staff(%Staff{} = staff, attrs) do
     staff
     |> Staff.changeset(attrs)
@@ -90,6 +95,7 @@ defmodule Chathams.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec delete_staff(Staff.t()) :: {:ok, Staff.t()} | {:error, Ecto.Changeset.t()}
   def delete_staff(%Staff{} = staff) do
     Repo.delete(staff)
   end
@@ -103,6 +109,7 @@ defmodule Chathams.Accounts do
       %Ecto.Changeset{data: %Staff{}}
 
   """
+  @spec change_staff(Staff.t(), map()) :: Ecto.Changeset.t()
   def change_staff(%Staff{} = staff, attrs \\ %{}) do
     Staff.changeset(staff, attrs)
   end

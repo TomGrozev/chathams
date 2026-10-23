@@ -35,6 +35,7 @@ defmodule Chathams.Accounts.Staff do
   end
 
   @doc false
+  @spec changeset(Staff.t(), map()) :: Ecto.Changeset.t()
   def changeset(staff, attrs) do
     staff
     |> cast(attrs, [:sid, :first_name, :last_name])

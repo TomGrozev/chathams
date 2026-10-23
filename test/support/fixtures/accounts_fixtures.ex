@@ -7,11 +7,20 @@ defmodule Chathams.AccountsFixtures do
   @doc """
   Generate a unique staff sid.
   """
-  def unique_staff_sid, do: "some sid#{System.unique_integer([:positive])}"
+  @spec unique_staff_sid() :: String.t()
+  def unique_staff_sid do
+    suffix =
+      "0000"
+      |> Kernel.<>(Integer.to_string(System.unique_integer([:positive])))
+      |> String.slice(-4, 4)
+
+    "tst" <> suffix
+  end
 
   @doc """
   Generate a staff.
   """
+  @spec staff_fixture(map()) :: Chathams.Accounts.Staff.t()
   def staff_fixture(attrs \\ %{}) do
     {:ok, staff} =
       attrs

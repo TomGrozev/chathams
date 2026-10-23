@@ -4,6 +4,7 @@ defmodule ChathamsWeb.SheetController do
 
   @blank_row_pages 3
 
+  @spec blank(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def blank(conn, _params) do
     staff =
       Accounts.list_staff()
