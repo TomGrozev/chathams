@@ -34,6 +34,10 @@ _Avoid_: Upload, image, sheet ID
 The step where an admin confirms or corrects the amounts read from a scan before they change any balance.
 _Avoid_: Approval, verification
 
+**Collection**:
+The time when an admin takes all filled ledger sheets off the wall. The purchases on a scan are from the period between the previous collection and this one.
+_Avoid_: Pickup, cycle, period
+
 ## Money
 
 **Purchase**:
@@ -41,8 +45,12 @@ One amount that a staff member wrote in one price box. It can cover several item
 _Avoid_: Item, entry, transaction
 
 **Balance**:
-The amount a staff member owes Chathams: their purchases minus their payments.
+The amount a staff member owes Chathams: their purchases plus their adjustments, minus their payments.
 _Avoid_: Debt, tab, account
+
+**Adjustment**:
+An amount that an admin adds to or takes from a staff member's balance, with a reason. Admins use it to write off a balance or to record a purchase that is on no ledger sheet.
+_Avoid_: Write-off, credit, correction
 
 **Payment**:
 Money (cash or bank transfer) a staff member pays to reduce their balance. An admin records it, or confirms a payment claim.
