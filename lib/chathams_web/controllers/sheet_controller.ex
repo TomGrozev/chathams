@@ -11,6 +11,7 @@ defmodule ChathamsWeb.SheetController do
   @variants %{
     "A" => %{name: "Dense portrait", rows: 10},
     "B" => %{name: "Landscape wide", rows: 8},
+    "B2" => %{name: "Landscape wide, refined", rows: 8},
     "C" => %{name: "Staff blocks", rows: 6}
   }
 

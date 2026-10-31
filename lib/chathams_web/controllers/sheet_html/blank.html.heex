@@ -67,21 +67,65 @@
   .vc-head .ls-sid-hint { font-size: 7.5pt; margin: 0 !important; max-width: 60mm; }
   .vc-line { display: flex; gap: 2mm; margin-top: 1.2mm; }
   .vc-line .ls-box { width: 22.75mm; height: 11.5mm; }
+
+  /* B2: B's row and box geometry, refined type and header. Pure black on
+     white: only text, thin rules and the light box lines carry ink. */
+  @font-face { font-family: "Atkinson Hyperlegible"; font-weight: 400; src: url("/fonts/AtkinsonHyperlegible-Regular.ttf"); }
+  @font-face { font-family: "Atkinson Hyperlegible"; font-weight: 700; src: url("/fonts/AtkinsonHyperlegible-Bold.ttf"); }
+  .vb2 { font-family: "Atkinson Hyperlegible", "DejaVu Sans", sans-serif; }
+  .vb2-head { position: absolute; top: 7.5mm; left: 22mm; right: 22mm; }
+  .vb2-titleline { display: flex; align-items: baseline; justify-content: space-between; }
+  .vb2-title { font-size: 19pt; font-weight: 700; letter-spacing: -0.01em; line-height: 1; }
+  .vb2-tagline { font-size: 9pt; }
+  .vb2-rule { border-top: 0.25mm solid #000; margin-top: 1.8mm; }
+  .vb2-rules { display: grid; grid-template-columns: 1fr 1fr 1fr 1.25fr; column-gap: 7mm; margin-top: 2mm; font-size: 8.5pt; line-height: 1.25; }
+  .vb2-rules b { font-weight: 700; }
+  .vb2-example { display: flex; gap: 2.5mm; align-items: flex-start; }
+  .vb2-example .ls-box { width: 9mm; height: 9mm; display: flex; align-items: center; justify-content: center; }
+  .vb2-hand { font-family: "DejaVu Serif", serif; font-style: italic; font-size: 12pt; line-height: 1; }
+  .vb2-row { position: absolute; left: 7mm; width: 283mm; height: 17mm; display: flex; gap: 3mm; }
+  .vb2-lead { position: relative; width: 62mm; flex: none; display: flex; align-items: center; gap: 3mm; }
+  .vb2-lead.blank { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 0; }
+  .vb2-lead::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1.6mm; border-top: 0.2mm solid var(--ls-line); }
+  .vb2-qr { width: 14mm; height: 14mm; }
+  .vb2-name { font-size: 11pt; font-weight: 700; line-height: 1.15; }
+  .vb2-sid { font-size: 9pt; letter-spacing: 0.14em; font-variant-numeric: tabular-nums; margin-top: 0.6mm !important; }
+  .vb2 .ls-sid-hint { font-size: 7pt; }
+  .vb2-boxes { display: flex; gap: 1.5mm; width: 218mm; flex: none; }
+  .vb2-boxes .ls-box { width: 14.18mm; height: 17mm; }
+  .vb2-foot { position: absolute; left: 22mm; right: 22mm; bottom: 7.5mm; display: flex; justify-content: space-between; align-items: baseline; font-size: 8pt; border-top: 0.2mm solid #000; padding-top: 1.5mm; }
 </style>
-<style :if={@variant == "B"}>
+<style :if={@variant in ["B", "B2"]}>
   @page { size: A4 landscape; margin: 0; }
 </style>
 
-<div class={["ls-sheet", @variant == "B" && "ls-landscape"]}>
+<div class={["ls-sheet", @variant in ["B", "B2"] && "ls-landscape", @variant == "B2" && "vb2"]}>
   <section :for={rows <- @pages} class="ls-page">
     <.aruco_marker id={0} class="tl" />
     <.aruco_marker id={1} class="tr" />
     <.aruco_marker id={2} class="br" />
     <.aruco_marker id={3} class="bl" />
 
-    <header class="ls-header">
+    <header :if={@variant != "B2"} class="ls-header">
       <p class="ls-title">Chathams ledger</p>
       <.instructions />
+    </header>
+
+    <header :if={@variant == "B2"} class="vb2-head">
+      <div class="vb2-titleline">
+        <p class="vb2-title">Chathams ledger</p>
+        <p class="vb2-tagline">Write down what you buy. Pay it off from your balance.</p>
+      </div>
+      <div class="vb2-rule"></div>
+      <div class="vb2-rules">
+        <p><b>One amount per box.</b> Write it in dollars, for example 2.50.</p>
+        <p><b>Not on the sheet, or your row is full?</b> Use a blank row at the end.</p>
+        <p><b>Blank row:</b> write your sid in capitals, one letter in each box.</p>
+        <div class="vb2-example">
+          <div class="ls-box"><span class="vb2-hand">1.5</span></div>
+          <p><b>Bought things together?</b> Write the total in one box: 50c and $1 is 1.5.</p>
+        </div>
+      </div>
     </header>
 
     <%= if @variant == "A" do %>
@@ -128,6 +172,33 @@
           <div :for={_ <- 1..14} class="ls-box"><span class="vb-dollar">$</span></div>
         </div>
       </div>
+    <% end %>
+
+    <%= if @variant == "B2" do %>
+      <div
+        :for={{person, i} <- Enum.with_index(rows)}
+        class="vb2-row"
+        style={"top: #{31 + i * 20}mm"}
+      >
+        <%= if person == :blank do %>
+          <div class="vb2-lead blank"><.sid_cells /></div>
+        <% else %>
+          <div class="vb2-lead">
+            <div class="ls-qr vb2-qr">{person.qr}</div>
+            <div>
+              <p class="vb2-name">{person.full_name}</p>
+              <p class="vb2-sid">{person.sid}</p>
+            </div>
+          </div>
+        <% end %>
+        <div class="vb2-boxes">
+          <div :for={_ <- 1..14} class="ls-box"></div>
+        </div>
+      </div>
+      <footer class="vb2-foot">
+        <p><b>Chathams</b> staff shop</p>
+        <p>Keep each amount inside its box. Admins scan this sheet after each collection.</p>
+      </footer>
     <% end %>
 
     <%= if @variant == "C" do %>
