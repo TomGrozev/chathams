@@ -96,19 +96,19 @@
   .vb2 .ls-sid-hint { font-size: 7pt; }
   .vb2-boxes { display: flex; gap: 1.5mm; width: 218mm; flex: none; }
   .vb2-boxes .ls-box { width: var(--vb-box); height: 17mm; }
-  .vb2-boxes .vb2-cash { margin-left: 2.5mm; }
+  .vb2-boxes .ls-box:not(.vb2-cash) + .vb2-cash { margin-left: 2.5mm; }
   .vb2-cols { position: absolute; top: 26.6mm; left: 72mm; display: flex; gap: 4mm; font-size: 8pt; font-weight: 700; line-height: 1; white-space: nowrap; }
   .vb2-cols p:last-child { text-align: center; }
   .vb2-foot { position: absolute; left: 22mm; right: 22mm; bottom: 7.5mm; display: flex; justify-content: space-between; align-items: baseline; font-size: 8pt; border-top: 0.2mm solid #000; padding-top: 1.5mm; }
 </style>
-<style :if={@variant in ["B", "B2", "B3", "B4"]}>
+<style :if={@variant in ["B", "B2", "B3", "B4", "B5"]}>
   @page { size: A4 landscape; margin: 0; }
 </style>
 
 <div class={[
   "ls-sheet",
-  @variant in ["B", "B2", "B3", "B4"] && "ls-landscape",
-  @variant in ["B2", "B3", "B4"] && "vb2"
+  @variant in ["B", "B2", "B3", "B4", "B5"] && "ls-landscape",
+  @variant in ["B2", "B3", "B4", "B5"] && "vb2"
 ]}>
   <section :for={rows <- @pages} class="ls-page">
     <.aruco_marker id={0} class="tl" />
@@ -116,12 +116,12 @@
     <.aruco_marker id={2} class="br" />
     <.aruco_marker id={3} class="bl" />
 
-    <header :if={@variant not in ["B2", "B3", "B4"]} class="ls-header">
+    <header :if={@variant not in ["B2", "B3", "B4", "B5"]} class="ls-header">
       <p class="ls-title">Chathams ledger</p>
       <.instructions />
     </header>
 
-    <header :if={@variant in ["B2", "B3", "B4"]} class="vb2-head">
+    <header :if={@variant in ["B2", "B3", "B4", "B5"]} class="vb2-head">
       <div class="vb2-titleline">
         <p class="vb2-title">Chathams ledger</p>
         <p class="vb2-tagline">Write down what you buy. Pay it off from your balance.</p>
@@ -141,8 +141,11 @@
         <%!-- Two lines at most: a third line runs into the column headings. The blank
           row itself says to write the sid in capitals. --%>
         <p><b>Not on the sheet, or your row is full?</b> Use a blank row at the end.</p>
-        <p>
+        <p :if={@variant != "B5"}>
           <b>Paid cash?</b> Write the amount in Cash paid and put the cash in the cash box.
+        </p>
+        <p :if={@variant == "B5"}>
+          <b>Paid cash?</b> One payment per Cash paid box. Need more? Use a blank row.
         </p>
         <div class="vb2-example">
           <div class="ls-box"><span class="vb2-hand">1.5</span></div>
@@ -197,12 +200,17 @@
       </div>
     <% end %>
 
-    <%= if @variant in ["B2", "B3", "B4"] do %>
-      <% {box_w, prices, cash_w} =
-        %{"B2" => {14.18, 14, nil}, "B3" => {14.0, 13, 14.0}, "B4" => {14.0, 12, 29.5}}[@variant] %>
-      <div :if={cash_w} class="vb2-cols">
+    <%= if @variant in ["B2", "B3", "B4", "B5"] do %>
+      <% {box_w, prices, cash_ws} =
+        %{
+          "B2" => {14.18, 14, []},
+          "B3" => {14.0, 13, [14.0]},
+          "B4" => {14.0, 12, [29.5]},
+          "B5" => {14.0, 12, [14.0, 14.0]}
+        }[@variant] %>
+      <div :if={cash_ws != []} class="vb2-cols">
         <p style={"width: #{prices * box_w + (prices - 1) * 1.5}mm"}>Purchases</p>
-        <p style={"width: #{cash_w}mm"}>Cash paid</p>
+        <p style={"width: #{Enum.sum(cash_ws) + (length(cash_ws) - 1) * 1.5}mm"}>Cash paid</p>
       </div>
       <div
         :for={{person, i} <- Enum.with_index(rows)}
@@ -222,7 +230,7 @@
         <% end %>
         <div class="vb2-boxes" style={"--vb-box: #{box_w}mm"}>
           <div :for={_ <- 1..prices} class="ls-box"></div>
-          <div :if={cash_w} class="ls-box vb2-cash" style={"width: #{cash_w}mm"}></div>
+          <div :for={w <- cash_ws} class="ls-box vb2-cash" style={"width: #{w}mm"}></div>
         </div>
       </div>
       <footer class="vb2-foot">

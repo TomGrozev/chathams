@@ -16,6 +16,7 @@ defmodule ChathamsWeb.SheetController do
     # (not 14.18) so 13 boxes, a 4 mm gap and the cash box fit B's 218 mm.
     "B3" => %{name: "Refined, cash paid box", rows: 8},
     "B4" => %{name: "Refined, wide cash paid box", rows: 8},
+    "B5" => %{name: "Refined, two cash paid boxes", rows: 8},
     "C" => %{name: "Staff blocks", rows: 6}
   }
 
