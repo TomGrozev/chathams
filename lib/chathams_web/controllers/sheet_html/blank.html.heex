@@ -100,6 +100,8 @@
   .vb2-cols { position: absolute; top: 26.6mm; left: 72mm; display: flex; gap: 4mm; font-size: 8pt; font-weight: 700; line-height: 1; white-space: nowrap; }
   .vb2-cols p:last-child { text-align: center; }
   .vb2-foot { position: absolute; left: 22mm; right: 22mm; bottom: 7.5mm; display: flex; justify-content: space-between; align-items: baseline; font-size: 8pt; border-top: 0.2mm solid #000; padding-top: 1.5mm; }
+  /* B5 has longer instructions. Three lines must end above the column headings at 26.6 mm. */
+  .vb5-rules { grid-template-columns: 1.3fr 1fr 1fr 1fr; column-gap: 6mm; margin-top: 1.6mm; font-size: 8pt; line-height: 1.2; }
 </style>
 <style :if={@variant in ["B", "B2", "B3", "B4", "B5"]}>
   @page { size: A4 landscape; margin: 0; }
@@ -124,7 +126,12 @@
     <header :if={@variant in ["B2", "B3", "B4", "B5"]} class="vb2-head">
       <div class="vb2-titleline">
         <p class="vb2-title">Chathams ledger</p>
-        <p class="vb2-tagline">Write down what you buy. Pay it off from your balance.</p>
+        <p :if={@variant != "B5"} class="vb2-tagline">
+          Write down what you buy. Pay it off from your balance.
+        </p>
+        <p :if={@variant == "B5"} class="vb2-tagline">
+          Write down what you buy. We work out your balance.
+        </p>
       </div>
       <div class="vb2-rule"></div>
       <div :if={@variant == "B2"} class="vb2-rules">
@@ -136,21 +143,40 @@
           <p><b>Bought things together?</b> Write the total in one box: 50c and $1 is 1.5.</p>
         </div>
       </div>
-      <div :if={@variant != "B2"} class="vb2-rules">
+      <div :if={@variant in ["B3", "B4"]} class="vb2-rules">
         <p><b>One amount per box.</b> Write it in dollars, for example 2.50.</p>
         <%!-- Two lines at most: a third line runs into the column headings. The blank
           row itself says to write the sid in capitals. --%>
         <p><b>Not on the sheet, or your row is full?</b> Use a blank row at the end.</p>
-        <p :if={@variant != "B5"}>
+        <p>
           <b>Paid cash?</b> Write the amount in Cash paid and put the cash in the cash box.
-        </p>
-        <p :if={@variant == "B5"}>
-          <b>Paid cash?</b> One payment per Cash paid box. Need more? Use a blank row.
         </p>
         <div class="vb2-example">
           <div class="ls-box"><span class="vb2-hand">1.5</span></div>
           <p><b>Bought things together?</b> Write the total in one box: 50c and $1 is 1.5.</p>
         </div>
+      </div>
+      <%!-- chathams.example stands for the portal URL that the admin sets. --%>
+      <div :if={@variant == "B5"} class="vb2-rules vb5-rules">
+        <div class="vb2-example">
+          <div class="ls-box"><span class="vb2-hand">1.5</span></div>
+          <p>
+            <b>Buying?</b>
+            Write the price in a Purchases box, for example 2.50. Several things at once? Write the total in one box.
+          </p>
+        </div>
+        <p>
+          <b>Paid cash?</b>
+          Put the cash in the cash box. Write the amount in a Cash paid box, one payment per box.
+        </p>
+        <p>
+          <b>Not listed, or row full?</b>
+          Use a blank row at the end. Write your sid in capitals, one letter per box.
+        </p>
+        <p>
+          <b>Your balance</b>
+          Worked out for you after each collection. See it, with your history, at chathams.example.
+        </p>
       </div>
     </header>
 
