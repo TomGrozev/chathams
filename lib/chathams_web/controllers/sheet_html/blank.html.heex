@@ -100,8 +100,8 @@
   .vb2-cols { position: absolute; top: 26.6mm; left: 72mm; display: flex; gap: 4mm; font-size: 8pt; font-weight: 700; line-height: 1; white-space: nowrap; }
   .vb2-cols p:last-child { text-align: center; }
   .vb2-foot { position: absolute; left: 22mm; right: 22mm; bottom: 7.5mm; display: flex; justify-content: space-between; align-items: baseline; font-size: 8pt; border-top: 0.2mm solid #000; padding-top: 1.5mm; }
-  /* B5 has longer instructions. Three lines must end above the column headings at 26.6 mm. */
-  .vb5-rules { grid-template-columns: 1.3fr 1fr 1fr 1fr; column-gap: 6mm; margin-top: 1.6mm; font-size: 8pt; line-height: 1.2; }
+  /* B5 has longer 9 pt instructions, so its headings and rows start 3 mm lower (see row_top). */
+  .vb5-rules { grid-template-columns: 1.3fr 1fr 1fr 1fr; column-gap: 6mm; margin-top: 1.6mm; font-size: 9pt; line-height: 1.2; }
 </style>
 <style :if={@variant in ["B", "B2", "B3", "B4", "B5"]}>
   @page { size: A4 landscape; margin: 0; }
@@ -174,7 +174,7 @@
           Use a blank row at the end. Write your sid in capitals, one letter per box.
         </p>
         <p>
-          <b>Your balance</b>
+          <b>Your balance:</b>
           Worked out for you after each collection. See it, with your history, at chathams.example.
         </p>
       </div>
@@ -227,21 +227,23 @@
     <% end %>
 
     <%= if @variant in ["B2", "B3", "B4", "B5"] do %>
-      <% {box_w, prices, cash_ws} =
+      <%!-- B5 rows start 3 mm lower at a 19.5 mm pitch, so the last row's rule
+        still ends above the bottom markers' quiet zone (191.3 mm). --%>
+      <% {box_w, prices, cash_ws, row_top, pitch} =
         %{
-          "B2" => {14.18, 14, []},
-          "B3" => {14.0, 13, [14.0]},
-          "B4" => {14.0, 12, [29.5]},
-          "B5" => {14.0, 12, [14.0, 14.0]}
+          "B2" => {14.18, 14, [], 31, 20},
+          "B3" => {14.0, 13, [14.0], 31, 20},
+          "B4" => {14.0, 12, [29.5], 31, 20},
+          "B5" => {14.0, 12, [14.0, 14.0], 34, 19.5}
         }[@variant] %>
-      <div :if={cash_ws != []} class="vb2-cols">
+      <div :if={cash_ws != []} class="vb2-cols" style={"top: #{row_top - 4.4}mm"}>
         <p style={"width: #{prices * box_w + (prices - 1) * 1.5}mm"}>Purchases</p>
         <p style={"width: #{Enum.sum(cash_ws) + (length(cash_ws) - 1) * 1.5}mm"}>Cash paid</p>
       </div>
       <div
         :for={{person, i} <- Enum.with_index(rows)}
         class="vb2-row"
-        style={"top: #{31 + i * 20}mm"}
+        style={"top: #{row_top + i * pitch}mm"}
       >
         <%= if person == :blank do %>
           <div class="vb2-lead blank"><.sid_cells /></div>
