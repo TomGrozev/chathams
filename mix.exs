@@ -71,6 +71,8 @@ defmodule Chathams.MixProject do
       {:evision, "~> 0.2"},
       {:pdfium, "~> 0.1"},
       {:tesseract_ocr, "~> 0.1.5"},
+      # PROTOTYPE (ledger sheet template, issue #7): QR codes on staff rows.
+      {:eqrcode, "~> 0.2"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false}
     ]

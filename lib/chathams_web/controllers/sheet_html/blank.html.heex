@@ -1,29 +1,179 @@
-<div :for={page_staff <- @staff} class="p-2 break-after-page">
-  <h1 class="text-center text-4xl font-bold">Chathams ledger</h1>
-  <p class="mt-2 text-center">
-    Please write in the cost of items being purchased in each box. Only write
-    one number per box and if you run out of boxes please write your name and
-    sid in a blank row at the end of these sheets. If for example you are buying
-    two items at once, one that is 50 cents and another that is 1 dollar, then
-    write 1.5 next to the dollar sign.
-  </p>
+<%!--
+  PROTOTYPE (issue #7): three ledger sheet variants on the blank sheet route,
+  switched by ?variant=A|B|C. Every position is in mm so each page of a variant
+  has the same box geometry, and the app can cut boxes by position.
+--%>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  :root { --ls-line: #b0b0b0; }
+  html, body { background: #d4d4d4; margin: 0; }
+  .ls-sheet { font-family: "Liberation Sans", Arial, Helvetica, sans-serif; color: #000; }
+  .ls-page { position: relative; overflow: hidden; background: #fff; width: 210mm; height: 296.9mm; margin: 8mm auto; box-shadow: 0 1mm 4mm rgba(0,0,0,.25); }
+  .ls-landscape .ls-page { width: 297mm; height: 209.9mm; }
+  @media print {
+    html, body { background: #fff; }
+    .ls-page { margin: 0; box-shadow: none; }
+    .ls-page + .ls-page { break-before: page; }
+  }
+  .ls-sheet *, .ls-sheet *::before { box-sizing: border-box; }
+  .ls-sheet p, .ls-sheet ul { margin: 0; }
+  .ls-sheet svg rect { shape-rendering: crispEdges; }
+  /* A 10 mm marker plus a 1.667 mm quiet zone; the marker edge sits 7 mm in. */
+  .ls-marker { position: absolute; width: 13.333mm; height: 13.333mm; }
+  .ls-marker.tl { left: 5.333mm; top: 5.333mm; }
+  .ls-marker.tr { right: 5.333mm; top: 5.333mm; }
+  .ls-marker.br { right: 5.333mm; bottom: 5.333mm; }
+  .ls-marker.bl { left: 5.333mm; bottom: 5.333mm; }
+  .ls-box { border: 0.3mm solid var(--ls-line); background: #fff; flex: none; position: relative; }
+  .ls-qr { flex: none; }
+  .ls-qr svg { display: block; width: 100%; height: 100%; }
+  .ls-header { position: absolute; top: 7mm; left: 20mm; right: 20mm; }
+  .ls-title { font-size: 15pt; font-weight: 700; line-height: 1.1; }
+  .ls-rules { columns: 2; column-gap: 6mm; font-size: 8.5pt; line-height: 1.3; margin-top: 1.5mm !important; padding-left: 4mm; list-style: disc; }
+  .ls-sid { display: flex; gap: 1mm; }
+  .ls-sid .ls-box { width: 8mm; height: 10mm; }
+  .ls-sid-hint { font-size: 6.5pt; margin-top: 0.8mm !important; }
+  .ls-name { font-weight: 700; line-height: 1.2; }
+  .ls-sid-text { letter-spacing: 0.04em; }
 
-  <table class="mt-4 w-full border-2">
-    <tbody>
-      <tr
-        :for={{person, idx} <- Enum.with_index(page_staff)}
-        class="flex"
+  /* A: dense portrait. 10 rows at a 24 mm pitch from y = 36 mm. */
+  .va-row { position: absolute; left: 7mm; width: 196mm; height: 20mm; display: flex; gap: 3mm; }
+  .va-lead { width: 62mm; flex: none; display: flex; align-items: center; gap: 2.5mm; }
+  .va-lead.blank { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 0; }
+  .va-qr { width: 12mm; height: 12mm; }
+  .va-name { font-size: 10pt; }
+  .va-sid { font-size: 9pt; }
+  .va-boxes { display: flex; gap: 1.5mm; width: 131mm; flex: none; }
+  .va-boxes .ls-box { width: 11.75mm; height: 20mm; }
+
+  /* B: landscape wide. 8 rows at a 20 mm pitch from y = 31 mm. */
+  .vb-row { position: absolute; left: 7mm; width: 283mm; height: 17mm; display: flex; gap: 3mm; }
+  .vb-lead { width: 62mm; flex: none; display: flex; align-items: center; gap: 2.5mm; }
+  .vb-lead.blank { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 0; }
+  .vb-qr { width: 14mm; height: 14mm; }
+  .vb-name { font-size: 10pt; }
+  .vb-sid { font-size: 9pt; }
+  .vb-boxes { display: flex; gap: 1.5mm; width: 218mm; flex: none; }
+  .vb-boxes .ls-box { width: 14.18mm; height: 17mm; }
+  /* Same grey as the box line, so the $ goes away with the lines after thresholding. */
+  .vb-dollar { position: absolute; left: 0.7mm; top: 0.3mm; font-size: 6pt; line-height: 1; color: var(--ls-line); }
+
+  /* C: staff blocks. 6 blocks at a 40.5 mm pitch from y = 36 mm. */
+  .vc-block { position: absolute; left: 7mm; width: 196mm; height: 37.4mm; }
+  .vc-head { height: 12mm; display: flex; align-items: center; gap: 3mm; }
+  .vc-qr { width: 12mm; height: 12mm; }
+  .vc-name { font-size: 11pt; }
+  .vc-sid { font-size: 10pt; }
+  .vc-head .ls-sid-hint { font-size: 7.5pt; margin: 0 !important; max-width: 60mm; }
+  .vc-line { display: flex; gap: 2mm; margin-top: 1.2mm; }
+  .vc-line .ls-box { width: 22.75mm; height: 11.5mm; }
+</style>
+<style :if={@variant == "B"}>
+  @page { size: A4 landscape; margin: 0; }
+</style>
+
+<div class={["ls-sheet", @variant == "B" && "ls-landscape"]}>
+  <section :for={rows <- @pages} class="ls-page">
+    <.aruco_marker id={0} class="tl" />
+    <.aruco_marker id={1} class="tr" />
+    <.aruco_marker id={2} class="br" />
+    <.aruco_marker id={3} class="bl" />
+
+    <header class="ls-header">
+      <p class="ls-title">Chathams ledger</p>
+      <.instructions />
+    </header>
+
+    <%= if @variant == "A" do %>
+      <div
+        :for={{person, i} <- Enum.with_index(rows)}
+        class="va-row"
+        style={"top: #{36 + i * 24}mm"}
       >
-        <th class="p-3 border-2">
-          <span>{person.full_name}</span> (<span>{person.sid}</span>)
-        </th>
-        <td
-          :for={i <- 10..1//-1}
-          class="flex-grow-1 border-2 text-lg py-3 px-1"
-        >
-          $
-        </td>
-      </tr>
-    </tbody>
-  </table>
+        <%= if person == :blank do %>
+          <div class="va-lead blank"><.sid_cells /></div>
+        <% else %>
+          <div class="va-lead">
+            <div class="ls-qr va-qr">{person.qr}</div>
+            <div>
+              <p class="ls-name va-name">{person.full_name}</p>
+              <p class="ls-sid-text va-sid">{person.sid}</p>
+            </div>
+          </div>
+        <% end %>
+        <div class="va-boxes">
+          <div :for={_ <- 1..10} class="ls-box"></div>
+        </div>
+      </div>
+    <% end %>
+
+    <%= if @variant == "B" do %>
+      <div
+        :for={{person, i} <- Enum.with_index(rows)}
+        class="vb-row"
+        style={"top: #{31 + i * 20}mm"}
+      >
+        <%= if person == :blank do %>
+          <div class="vb-lead blank"><.sid_cells /></div>
+        <% else %>
+          <div class="vb-lead">
+            <div class="ls-qr vb-qr">{person.qr}</div>
+            <div>
+              <p class="ls-name vb-name">{person.full_name}</p>
+              <p class="ls-sid-text vb-sid">{person.sid}</p>
+            </div>
+          </div>
+        <% end %>
+        <div class="vb-boxes">
+          <div :for={_ <- 1..14} class="ls-box"><span class="vb-dollar">$</span></div>
+        </div>
+      </div>
+    <% end %>
+
+    <%= if @variant == "C" do %>
+      <div
+        :for={{person, i} <- Enum.with_index(rows)}
+        class="vc-block"
+        style={"top: #{36 + i * 40.5}mm"}
+      >
+        <div class="vc-head">
+          <%= if person == :blank do %>
+            <.sid_cells hint={false} />
+            <p class="ls-sid-hint">
+              Write your sid in capitals, one letter in each box, for example N G U Y E N A
+            </p>
+          <% else %>
+            <div class="ls-qr vc-qr">{person.qr}</div>
+            <p class="ls-name vc-name">{person.full_name}</p>
+            <p class="ls-sid-text vc-sid">{person.sid}</p>
+          <% end %>
+        </div>
+        <div :for={_ <- 1..2} class="vc-line">
+          <div :for={_ <- 1..8} class="ls-box"></div>
+        </div>
+      </div>
+    <% end %>
+  </section>
 </div>
+
+<nav
+  :if={@show_switcher}
+  id="variant-switcher"
+  class="print:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full bg-neutral-900 px-4 py-2 font-sans text-sm text-white shadow-lg"
+>
+  <a href={"?variant=#{@prev_variant}"} data-dir="prev" aria-label="Previous variant" class="px-1">
+    ←
+  </a>
+  <span>{@variant} ({@variant_name})</span>
+  <a href={"?variant=#{@next_variant}"} data-dir="next" aria-label="Next variant" class="px-1">
+    →
+  </a>
+</nav>
+<script :if={@show_switcher}>
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest && e.target.closest("input, textarea, [contenteditable]")) return;
+    const dir = { ArrowLeft: "prev", ArrowRight: "next" }[e.key];
+    const link = dir && document.querySelector(`#variant-switcher [data-dir="${dir}"]`);
+    if (link) window.location.replace(link.href);
+  });
+</script>
