@@ -70,9 +70,12 @@
 
   /* B2: B's row and box geometry, refined type and header. Pure black on
      white: only text, thin rules and the light box lines carry ink. */
+  /* Atkinson Hyperlegible has a slashed zero and no plain-zero alternate in
+     its GSUB table, so the digits 0-9 come from Inter, whose default zero is plain. */
+  @font-face { font-family: "Plain Digits"; font-weight: 100 900; unicode-range: U+0030-0039; src: url("/fonts/Inter-Variable.ttf"); }
   @font-face { font-family: "Atkinson Hyperlegible"; font-weight: 400; src: url("/fonts/AtkinsonHyperlegible-Regular.ttf"); }
   @font-face { font-family: "Atkinson Hyperlegible"; font-weight: 700; src: url("/fonts/AtkinsonHyperlegible-Bold.ttf"); }
-  .vb2 { font-family: "Atkinson Hyperlegible", "DejaVu Sans", sans-serif; }
+  .vb2 { font-family: "Plain Digits", "Atkinson Hyperlegible", "DejaVu Sans", sans-serif; }
   .vb2-head { position: absolute; top: 7.5mm; left: 22mm; right: 22mm; }
   .vb2-titleline { display: flex; align-items: baseline; justify-content: space-between; }
   .vb2-title { font-size: 19pt; font-weight: 700; letter-spacing: -0.01em; line-height: 1; }
@@ -92,35 +95,55 @@
   .vb2-sid { font-size: 9pt; letter-spacing: 0.14em; font-variant-numeric: tabular-nums; margin-top: 0.6mm !important; }
   .vb2 .ls-sid-hint { font-size: 7pt; }
   .vb2-boxes { display: flex; gap: 1.5mm; width: 218mm; flex: none; }
-  .vb2-boxes .ls-box { width: 14.18mm; height: 17mm; }
+  .vb2-boxes .ls-box { width: var(--vb-box); height: 17mm; }
+  .vb2-boxes .vb2-cash { margin-left: 2.5mm; }
+  .vb2-cols { position: absolute; top: 26.6mm; left: 72mm; display: flex; gap: 4mm; font-size: 8pt; font-weight: 700; line-height: 1; white-space: nowrap; }
+  .vb2-cols p:last-child { text-align: center; }
   .vb2-foot { position: absolute; left: 22mm; right: 22mm; bottom: 7.5mm; display: flex; justify-content: space-between; align-items: baseline; font-size: 8pt; border-top: 0.2mm solid #000; padding-top: 1.5mm; }
 </style>
-<style :if={@variant in ["B", "B2"]}>
+<style :if={@variant in ["B", "B2", "B3", "B4"]}>
   @page { size: A4 landscape; margin: 0; }
 </style>
 
-<div class={["ls-sheet", @variant in ["B", "B2"] && "ls-landscape", @variant == "B2" && "vb2"]}>
+<div class={[
+  "ls-sheet",
+  @variant in ["B", "B2", "B3", "B4"] && "ls-landscape",
+  @variant in ["B2", "B3", "B4"] && "vb2"
+]}>
   <section :for={rows <- @pages} class="ls-page">
     <.aruco_marker id={0} class="tl" />
     <.aruco_marker id={1} class="tr" />
     <.aruco_marker id={2} class="br" />
     <.aruco_marker id={3} class="bl" />
 
-    <header :if={@variant != "B2"} class="ls-header">
+    <header :if={@variant not in ["B2", "B3", "B4"]} class="ls-header">
       <p class="ls-title">Chathams ledger</p>
       <.instructions />
     </header>
 
-    <header :if={@variant == "B2"} class="vb2-head">
+    <header :if={@variant in ["B2", "B3", "B4"]} class="vb2-head">
       <div class="vb2-titleline">
         <p class="vb2-title">Chathams ledger</p>
         <p class="vb2-tagline">Write down what you buy. Pay it off from your balance.</p>
       </div>
       <div class="vb2-rule"></div>
-      <div class="vb2-rules">
+      <div :if={@variant == "B2"} class="vb2-rules">
         <p><b>One amount per box.</b> Write it in dollars, for example 2.50.</p>
         <p><b>Not on the sheet, or your row is full?</b> Use a blank row at the end.</p>
         <p><b>Blank row:</b> write your sid in capitals, one letter in each box.</p>
+        <div class="vb2-example">
+          <div class="ls-box"><span class="vb2-hand">1.5</span></div>
+          <p><b>Bought things together?</b> Write the total in one box: 50c and $1 is 1.5.</p>
+        </div>
+      </div>
+      <div :if={@variant != "B2"} class="vb2-rules">
+        <p><b>One amount per box.</b> Write it in dollars, for example 2.50.</p>
+        <%!-- Two lines at most: a third line runs into the column headings. The blank
+          row itself says to write the sid in capitals. --%>
+        <p><b>Not on the sheet, or your row is full?</b> Use a blank row at the end.</p>
+        <p>
+          <b>Paid cash?</b> Write the amount in Cash paid and put the cash in the cash box.
+        </p>
         <div class="vb2-example">
           <div class="ls-box"><span class="vb2-hand">1.5</span></div>
           <p><b>Bought things together?</b> Write the total in one box: 50c and $1 is 1.5.</p>
@@ -174,7 +197,13 @@
       </div>
     <% end %>
 
-    <%= if @variant == "B2" do %>
+    <%= if @variant in ["B2", "B3", "B4"] do %>
+      <% {box_w, prices, cash_w} =
+        %{"B2" => {14.18, 14, nil}, "B3" => {14.0, 13, 14.0}, "B4" => {14.0, 12, 29.5}}[@variant] %>
+      <div :if={cash_w} class="vb2-cols">
+        <p style={"width: #{prices * box_w + (prices - 1) * 1.5}mm"}>Purchases</p>
+        <p style={"width: #{cash_w}mm"}>Cash paid</p>
+      </div>
       <div
         :for={{person, i} <- Enum.with_index(rows)}
         class="vb2-row"
@@ -191,8 +220,9 @@
             </div>
           </div>
         <% end %>
-        <div class="vb2-boxes">
-          <div :for={_ <- 1..14} class="ls-box"></div>
+        <div class="vb2-boxes" style={"--vb-box: #{box_w}mm"}>
+          <div :for={_ <- 1..prices} class="ls-box"></div>
+          <div :if={cash_w} class="ls-box vb2-cash" style={"width: #{cash_w}mm"}></div>
         </div>
       </div>
       <footer class="vb2-foot">

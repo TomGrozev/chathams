@@ -12,6 +12,10 @@ defmodule ChathamsWeb.SheetController do
     "A" => %{name: "Dense portrait", rows: 10},
     "B" => %{name: "Landscape wide", rows: 8},
     "B2" => %{name: "Landscape wide, refined", rows: 8},
+    # B3 and B4 add a "Cash paid" box per row. Price boxes are 14 mm wide
+    # (not 14.18) so 13 boxes, a 4 mm gap and the cash box fit B's 218 mm.
+    "B3" => %{name: "Refined, cash paid box", rows: 8},
+    "B4" => %{name: "Refined, wide cash paid box", rows: 8},
     "C" => %{name: "Staff blocks", rows: 6}
   }
 
