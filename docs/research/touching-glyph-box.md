@@ -65,7 +65,7 @@ while a training job shared the CPU, so those two figures are upper bounds.
 | A, projection | 3 pieces, `127` | no split (aspect 1.04), `2` | 0.39 |
 | B, watershed | 2 pieces, `41` | 2 pieces, `.4` | 0.78 |
 | C, recognition-based | 2 pieces, `50`, min p 0.95 | 2 pieces, `50`, min p 0.96 | 31.8 |
-| D, CRNN + CTC | `4` | `8` | 8.8 |
+| D, CRNN + CTC | `80` | `8` | 3.8 |
 | E, pair head | `70` at p 0.881 | `70` at p 0.742 | 1.1 |
 
 Option C found the cut for `price_1_2` at column 35 of 75 and for `price_1_3` at column 28 of 56.
@@ -84,7 +84,7 @@ Same 8 amount boxes as the earlier benchmark, which the branch path scores 6 of 
 | C, cut penalty 0.30 | 7 / 8 | none |
 | C, cut penalty 0.15 | 7 / 8 | none |
 | C, cut penalty 0.50 | 6 / 8 | none, and it misses one join |
-| D | 0 / 8 | all (undertrained model) |
+| D | 0 / 8 | all (synthetic-only model) |
 | E | not applicable | it needs a trigger that says which blob is a pair |
 
 Option C lifts 6 of 8 to 7 of 8. The remaining error is `2.50`, where the leading `2` reads `1`
@@ -152,11 +152,11 @@ a bidirectional LSTM with 96 hidden units, a 12-class output (10 digits, `.`, bl
 96 k parameters, 0.93 MB. Input 32 x 128, height normalised to 20 px with the aspect kept.
 
 Training cost on this host: 220 to 300 ms per step at batch 64, 4 threads. Validation sequence
-accuracy on held-out synthetic strings rose from 0.03 at step 100 to 0.51 at step 700 and 0.63 at
-step 1350, about 0.02 per 50 steps and still climbing. The run reached 1350 of 2200 steps when the
-measurement was taken, so section 2 reports an undertrained model: it emits 1 or 2 characters
-(`4` and `8` for the two joins) and gets no real box right. This is a cost measurement, not a
-verdict on the approach.
+accuracy on held-out synthetic strings rose from 0.03 at step 100 to 0.51 at step 700, 0.63 at
+step 1350, and 0.695 at the end of the full 2200-step run (581 s of training). Even finished, the
+model emits 1 or 2 characters per box (`80` and `8` for the two joins) and gets no real box right:
+the synthetic strings do not carry this writer's joins. Inference costs 3.8 ms per box, so cost is
+not the blocker; the training data is.
 
 ## 7. Option E: a joined-pair head
 
@@ -216,8 +216,8 @@ Limits:
   shape. Any other pair, and any join at the top rather than the bottom, is unmeasured.
 - Zero-shot for option C: the branch CNN is unchanged, and the penalty was chosen on the same 8
   boxes it is scored on. Option C's 7 of 8 is therefore an optimistic number.
-- Option D is measured on an undertrained model. Its real cost is a training run, not a decision
-  this page can settle.
+- Option D is measured on a model trained only on synthetic strings. Its real cost is a training
+  run on real crops, which this page cannot supply.
 - Option E was trained to 0.696 pair accuracy only, on 57 k synthetic pairs. The confident wrong
   answer may be a training shortfall, but the 28 x 28 squash is a structural limit that no amount
   of training removes.
